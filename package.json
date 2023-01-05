@@ -1,9 +1,9 @@
 {
   "name": "@sailhouse/client",
-  "version": "0.0.1-preview-2",
+  "version": "0.0.2",
   "main": "dist/index.js",
-  "type": "module",
   "types": "dist/index.d.ts",
+  "type": "module",
   "files": [
     "dist"
   ],

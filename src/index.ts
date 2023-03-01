@@ -24,6 +24,18 @@ export interface IEvent<T> {
   ack: () => Promise<void>;
 }
 
+interface InternalEventsResponse<T> {
+  events: IEvent<T>[];
+  offset: number;
+  limit: number;
+}
+
+export interface EventsResponse<T> {
+  events: Event<T>[];
+  offset: number;
+  limit: number;
+}
+
 class Event<T> implements IEvent<T> {
   id: string;
   data: T;
@@ -49,7 +61,6 @@ class Event<T> implements IEvent<T> {
   }
 
   ack = async (): Promise<void> => {
-    console.log("Acking event", this.id, this.topic, this.subscription);
     return await this.client.ackEvent(this.topic, this.subscription, this.id);
   };
 }
@@ -85,7 +96,7 @@ export class SailhouseClient {
     topic: string,
     subscription: string,
     options: GetEventOptions<T> = {},
-  ): Promise<IEvent<T>[]> => {
+  ): Promise<EventsResponse<T>> => {
     const path = `https://api.sailhouse.dev/topics/${topic}/subscriptions/${subscription}/events`;
     const url = new URL(path);
 
@@ -97,9 +108,14 @@ export class SailhouseClient {
       headers: {
         Authorization: this.apiKey,
       },
-    }).then((res) => res.json() as Promise<IEvent<T>[]>);
+    }).then((res) => res.json() as Promise<InternalEventsResponse<T>>);
 
-    return results.map((event) => new Event(event, topic, subscription, this));
+    return {
+      ...results,
+      events: results.events.map(
+        (event) => new Event(event, topic, subscription, this),
+      ),
+    };
   };
 
   sendEvent = async <T extends unknown>(

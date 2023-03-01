@@ -1,5 +1,3 @@
-import fetch from "node-fetch";
-
 // Nested keyof utility type
 type NestedKeyOf<T, U = T> = U extends object
   ? {
@@ -65,10 +63,17 @@ class Event<T> implements IEvent<T> {
   };
 }
 
+interface Options {
+  fetch: typeof fetch;
+}
+
 export class SailhouseClient {
   apiKey: string;
-  constructor() {
-    this.apiKey = process.env.SAILHOUSE_API_KEY ?? "";
+  fetch: typeof fetch;
+
+  constructor(apiKey: string, opts?: Partial<Options>) {
+    this.apiKey = apiKey;
+    this.fetch = opts?.fetch ?? fetch;
   }
 
   queryEvents = async <T extends unknown>(
@@ -84,7 +89,7 @@ export class SailhouseClient {
       url.searchParams.set(key, value);
     });
 
-    const results = await fetch(url.toString(), {
+    const results = await this.fetch(url.toString(), {
       headers: {
         Authorization: this.apiKey,
       },
@@ -104,7 +109,7 @@ export class SailhouseClient {
       url.searchParams.set(key, value);
     });
 
-    const results = await fetch(url.toString(), {
+    const results = await this.fetch(url.toString(), {
       headers: {
         Authorization: this.apiKey,
       },
@@ -124,7 +129,7 @@ export class SailhouseClient {
   ): Promise<void> => {
     const path = `https://api.sailhouse.dev/topics/${topic}/events`;
 
-    return await fetch(path, {
+    return await this.fetch(path, {
       method: "POST",
       body: JSON.stringify({ data: event }),
       headers: {
@@ -141,7 +146,7 @@ export class SailhouseClient {
   ): Promise<void> => {
     const path = `https://api.sailhouse.dev/topics/${topic}/subscriptions/${subscription}/events/${eventId}`;
 
-    return await fetch(path, {
+    return await this.fetch(path, {
       method: "POST",
       headers: {
         Authorization: this.apiKey,

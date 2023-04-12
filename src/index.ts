@@ -1,3 +1,6 @@
+import { Wretch, default as w } from "wretch";
+import { default as addon, QueryStringAddon } from "wretch/addons/queryString";
+
 // Nested keyof utility type
 type NestedKeyOf<T, U = T> = U extends object
   ? {
@@ -68,12 +71,16 @@ interface Options {
 }
 
 export class SailhouseClient {
-  apiKey: string;
-  fetch: typeof fetch;
+  private apiKey: string;
+  private api: QueryStringAddon & Wretch<QueryStringAddon>;
 
   constructor(apiKey: string, opts?: Partial<Options>) {
     this.apiKey = apiKey;
-    this.fetch = opts?.fetch ?? fetch;
+    this.api = w()
+      .polyfills({ fetch: opts?.fetch ?? fetch })
+      .addon(addon)
+      .auth(apiKey)
+      .url("https://api.sailhouse.dev");
   }
 
   queryEvents = async <T extends unknown>(
@@ -81,20 +88,23 @@ export class SailhouseClient {
     subscription: string,
     query: string,
     options: GetEventOptions<T> = {},
-  ): Promise<IEvent<T>[]> => {
-    const path = `https://api.sailhouse.dev/topics/${topic}/subscriptions/${subscription}/events`;
-    const url = new URL(path);
+  ): Promise<EventsResponse<T>> => {
+    const results = await this.api
+      .url(`/topics/${topic}/subscriptions/${subscription}/events`)
+      .query({
+        ...options,
+        query,
+      })
+      .get()
+      .json<InternalEventsResponse<T>>();
 
-    Object.entries({ ...options, query }).forEach(([key, value]) => {
-      url.searchParams.set(key, value);
-    });
-
-    const results = await this.fetch(url.toString(), {
-      headers: {
-        Authorization: this.apiKey,
-      },
-    }).then((res) => res.json() as Promise<IEvent<T>[]>);
-    return results.map((event) => new Event(event, topic, subscription, this));
+    return {
+      events: results.events.map(
+        (event) => new Event(event, topic, subscription, this),
+      ),
+      limit: results.limit,
+      offset: results.offset,
+    };
   };
 
   getEvents = async <T extends unknown>(
@@ -102,24 +112,20 @@ export class SailhouseClient {
     subscription: string,
     options: GetEventOptions<T> = {},
   ): Promise<EventsResponse<T>> => {
-    const path = `https://api.sailhouse.dev/topics/${topic}/subscriptions/${subscription}/events`;
-    const url = new URL(path);
-
-    Object.entries(options).forEach(([key, value]) => {
-      url.searchParams.set(key, value);
-    });
-
-    const results = await this.fetch(url.toString(), {
-      headers: {
-        Authorization: this.apiKey,
-      },
-    }).then((res) => res.json() as Promise<InternalEventsResponse<T>>);
+    const results = await this.api
+      .url(`/topics/${topic}/subscriptions/${subscription}/events`)
+      .query({
+        ...options,
+      })
+      .get()
+      .json<InternalEventsResponse<T>>();
 
     return {
-      ...results,
       events: results.events.map(
         (event) => new Event(event, topic, subscription, this),
       ),
+      limit: results.limit,
+      offset: results.offset,
     };
   };
 
@@ -127,16 +133,7 @@ export class SailhouseClient {
     topic: string,
     event: T,
   ): Promise<void> => {
-    const path = `https://api.sailhouse.dev/topics/${topic}/events`;
-
-    return await this.fetch(path, {
-      method: "POST",
-      body: JSON.stringify({ data: event }),
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: this.apiKey,
-      },
-    }).then(() => {});
+    await this.api.url(`/topics/${topic}/events`).post({ data: event }).res();
   };
 
   ackEvent = async (
@@ -144,13 +141,9 @@ export class SailhouseClient {
     subscription: string,
     eventId: string,
   ): Promise<void> => {
-    const path = `https://api.sailhouse.dev/topics/${topic}/subscriptions/${subscription}/events/${eventId}`;
-
-    return await this.fetch(path, {
-      method: "POST",
-      headers: {
-        Authorization: this.apiKey,
-      },
-    }).then(() => {});
+    await this.api
+      .url(`/topics/${topic}/subscriptions/${subscription}/events/${eventId}`)
+      .post()
+      .res();
   };
 }

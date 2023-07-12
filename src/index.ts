@@ -71,41 +71,15 @@ interface Options {
 }
 
 export class SailhouseClient {
-  private apiKey: string;
   private api: QueryStringAddon & Wretch<QueryStringAddon>;
 
   constructor(apiKey: string, opts?: Partial<Options>) {
-    this.apiKey = apiKey;
     this.api = w()
       .polyfills({ fetch: opts?.fetch ?? fetch })
       .addon(addon)
       .auth(apiKey)
       .url("https://api.sailhouse.dev");
   }
-
-  queryEvents = async <T extends unknown>(
-    topic: string,
-    subscription: string,
-    query: string,
-    options: GetEventOptions<T> = {},
-  ): Promise<EventsResponse<T>> => {
-    const results = await this.api
-      .url(`/topics/${topic}/subscriptions/${subscription}/events`)
-      .query({
-        ...options,
-        query,
-      })
-      .get()
-      .json<InternalEventsResponse<T>>();
-
-    return {
-      events: results.events.map(
-        (event) => new Event(event, topic, subscription, this),
-      ),
-      limit: results.limit,
-      offset: results.offset,
-    };
-  };
 
   getEvents = async <T extends unknown>(
     topic: string,
@@ -129,7 +103,7 @@ export class SailhouseClient {
     };
   };
 
-  sendEvent = async <T extends unknown>(
+  publish = async <T extends unknown>(
     topic: string,
     event: T,
   ): Promise<void> => {

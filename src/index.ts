@@ -78,6 +78,9 @@ export class SailhouseClient {
       .polyfills({ fetch: opts?.fetch ?? fetch })
       .addon(addon)
       .auth(apiKey)
+      .headers({
+        "x-source": "sailhouse-js",
+      })
       .url("https://api.sailhouse.dev");
   }
 

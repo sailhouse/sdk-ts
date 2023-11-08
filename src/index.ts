@@ -1,5 +1,6 @@
 import { Wretch, default as w } from "wretch";
 import { default as addon, QueryStringAddon } from "wretch/addons/queryString";
+import WebSocket from "ws";
 
 // Nested keyof utility type
 type NestedKeyOf<T, U = T> = U extends object
@@ -70,8 +71,13 @@ interface Options {
   fetch: typeof fetch;
 }
 
+type PublishEventOptions = {
+  metadata?: Record<string, string>;
+};
+
 export class SailhouseClient {
   private api: QueryStringAddon & Wretch<QueryStringAddon>;
+  private apiKey: string;
 
   constructor(apiKey: string, opts?: Partial<Options>) {
     this.api = w()
@@ -82,6 +88,8 @@ export class SailhouseClient {
         "x-source": "sailhouse-js",
       })
       .url("https://api.sailhouse.dev");
+
+    this.apiKey = apiKey;
   }
 
   getEvents = async <T extends unknown>(
@@ -106,11 +114,55 @@ export class SailhouseClient {
     };
   };
 
+  streamEvents<T extends unknown>(
+    topic: string,
+    subscription: string,
+    handler: (event: Event<T>) => void | Promise<void>,
+    options: GetEventOptions<T> = {},
+  ): () => void {
+    const randomClientId = Math.random().toString(36).substring(7);
+
+    const ws = new WebSocket("wss://api.sailhouse.dev/events/stream");
+
+    ws.on("open", () => {
+      ws.send(
+        JSON.stringify({
+          topic_slug: topic,
+          subscription_slug: subscription,
+          token: this.apiKey,
+          client_id: randomClientId,
+        }),
+      );
+    });
+
+    ws.on("message", async (data) => {
+      const json = JSON.parse(data.toString());
+
+      const event = new Event<T>(json, topic, subscription, this);
+
+      await handler(event);
+    });
+
+    ws.on("close", () => {});
+
+    ws.on("error", (err) => {
+      throw new Error(err.message);
+    });
+
+    return () => {
+      ws.close();
+    };
+  }
+
   publish = async <T extends unknown>(
     topic: string,
     event: T,
+    options?: PublishEventOptions,
   ): Promise<void> => {
-    await this.api.url(`/topics/${topic}/events`).post({ data: event }).res();
+    await this.api
+      .url(`/topics/${topic}/events`)
+      .post({ data: event, metadata: options?.metadata })
+      .res();
   };
 
   ackEvent = async (

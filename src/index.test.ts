@@ -1,3 +1,4 @@
+import { EventRequests } from "../test/utils.js";
 import { SailhouseClient } from "./index.js";
 import { beforeEach, describe, expect, it } from "vitest";
 
@@ -21,8 +22,17 @@ describe("Sailhouse Client", () => {
   });
 
   it("should send an event", async () => {
-    await client.sendEvent("topic", { foo: "bar" });
+    await client.publish("topic", { foo: "bar" });
 
-    expect(true).toBe(true);
+    expect(EventRequests).toHaveLength(1);
+    expect(EventRequests[0].data).toEqual({ foo: "bar" });
+  });
+
+  it("should pass the scheduled event time", async () => {
+    const date = new Date();
+    await client.publish("topic", { foo: "bar" }, { send_at: date });
+
+    expect(EventRequests).toHaveLength(1);
+    expect(EventRequests[0].send_at).toBe(date.toISOString());
   });
 });

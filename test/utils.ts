@@ -1,6 +1,9 @@
 import { rest } from "msw";
 import { setupServer } from "msw/node";
-import { afterAll, beforeAll } from "vitest";
+import { afterAll, beforeAll, beforeEach } from "vitest";
+
+export const EventRequests: any[] = [];
+
 const server = setupServer(
   rest.get(
     "https://api.sailhouse.dev/topics/:topic/subscriptions/:subscription/events",
@@ -24,7 +27,7 @@ const server = setupServer(
   ),
   rest.post(
     "https://api.sailhouse.dev/topics/:topic/subscriptions/:subscription/events/:event",
-    (req, res, ctx) => {
+    async (req, res, ctx) => {
       if (
         req.params.event !== "1" ||
         req.params.topic !== "topic" ||
@@ -38,15 +41,22 @@ const server = setupServer(
   ),
   rest.post(
     "https://api.sailhouse.dev/topics/:topic/events",
-    (req, res, ctx) => {
+    async (req, res, ctx) => {
       if (req.params.topic !== "topic") {
         return res(ctx.status(404));
       }
+
+      const body = await req.json();
+      EventRequests.push(body);
 
       return res(ctx.json({}));
     },
   ),
 );
+
+beforeEach(() => {
+  EventRequests.length = 0;
+});
 
 beforeAll(() => {
   // Establish requests interception layer before all tests.

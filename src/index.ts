@@ -73,6 +73,7 @@ interface Options {
 
 type PublishEventOptions = {
   metadata?: Record<string, string>;
+  send_at?: Date;
 };
 
 export class SailhouseClient {
@@ -159,9 +160,14 @@ export class SailhouseClient {
     event: T,
     options?: PublishEventOptions,
   ): Promise<void> => {
+    let sendAt = undefined;
+    if (options?.send_at) {
+      sendAt = options.send_at.toISOString();
+    }
+
     await this.api
       .url(`/topics/${topic}/events`)
-      .post({ data: event, metadata: options?.metadata })
+      .post({ data: event, metadata: options?.metadata, send_at: sendAt })
       .res();
   };
 

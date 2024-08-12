@@ -38,6 +38,10 @@ export interface EventsResponse<T> {
   limit: number;
 }
 
+type PublishEventResponse = {
+  id: string;
+};
+
 class Event<T> implements IEvent<T> {
   id: string;
   data: T;
@@ -159,16 +163,16 @@ export class SailhouseClient {
     topic: string,
     event: T,
     options?: PublishEventOptions,
-  ): Promise<void> => {
+  ): Promise<PublishEventResponse> => {
     let sendAt = undefined;
     if (options?.send_at) {
       sendAt = options.send_at.toISOString();
     }
 
-    await this.api
+    return await this.api
       .url(`/topics/${topic}/events`)
       .post({ data: event, metadata: options?.metadata, send_at: sendAt })
-      .res();
+      .json<PublishEventResponse>();
   };
 
   ackEvent = async (

@@ -35,4 +35,18 @@ describe("Sailhouse Client", () => {
     expect(EventRequests).toHaveLength(1);
     expect(EventRequests[0].send_at).toBe(date.toISOString());
   });
+
+  it("should pull a subscription event", async () => {
+    const event = await client.pull("topic", "subscription");
+
+    expect(event).not.toBeNull();
+    expect(event?.id).toBe("1");
+    expect(event?.data).toEqual({ foo: "bar" });
+  });
+
+  it("should return null if no events are available", async () => {
+    const event = await client.pull("topic", "empty");
+
+    expect(event).toBeNull();
+  });
 });

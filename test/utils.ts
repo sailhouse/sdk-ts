@@ -52,6 +52,24 @@ const server = setupServer(
       return res(ctx.json({}));
     },
   ),
+  rest.get(
+    "https://api.sailhouse.dev/topics/:topic/subscriptions/:subscription/events/pull",
+    async (req, res, ctx) => {
+      if (req.params.subscription === "empty") {
+        return res(ctx.status(204));
+      }
+
+      return res(
+        ctx.json({
+          id: "1",
+          data: {
+            foo: "bar",
+          },
+          created_at: "2021-01-01T00:00:00Z",
+        }),
+      );
+    },
+  ),
 );
 
 beforeEach(() => {

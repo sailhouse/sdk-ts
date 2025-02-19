@@ -119,46 +119,6 @@ export class SailhouseClient {
     };
   };
 
-  streamEvents<T extends unknown>(
-    topic: string,
-    subscription: string,
-    handler: (event: Event<T>) => void | Promise<void>,
-    options: GetEventOptions<T> = {},
-  ): () => void {
-    const randomClientId = Math.random().toString(36).substring(7);
-
-    const ws = new WebSocket("wss://api.sailhouse.dev/events/stream");
-
-    ws.on("open", () => {
-      ws.send(
-        JSON.stringify({
-          topic_slug: topic,
-          subscription_slug: subscription,
-          token: this.apiKey,
-          client_id: randomClientId,
-        }),
-      );
-    });
-
-    ws.on("message", async (data) => {
-      const json = JSON.parse(data.toString());
-
-      const event = new Event<T>(json, topic, subscription, this);
-
-      await handler(event);
-    });
-
-    ws.on("close", () => {});
-
-    ws.on("error", (err) => {
-      throw new Error(err.message);
-    });
-
-    return () => {
-      ws.close();
-    };
-  }
-
   publish = async <T extends unknown>(
     topic: string,
     event: T,
@@ -184,5 +144,22 @@ export class SailhouseClient {
       .url(`/topics/${topic}/subscriptions/${subscription}/events/${eventId}`)
       .post()
       .res();
+  };
+
+  pull = async <T extends unknown>(
+    topic: string,
+    subscription: string,
+  ): Promise<Event<T> | null> => {
+    const res = await this.api
+      .url(`/topics/${topic}/subscriptions/${subscription}/events/pull`)
+      .get()
+      .res();
+
+    if (res.status === 204) {
+      return null;
+    }
+
+    const event = (await res.json()) as IEvent<T>;
+    return new Event(event, topic, subscription, this);
   };
 }

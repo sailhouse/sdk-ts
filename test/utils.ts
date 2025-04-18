@@ -3,6 +3,7 @@ import { setupServer } from "msw/node";
 import { afterAll, beforeAll, beforeEach } from "vitest";
 
 export const EventRequests: any[] = [];
+export const AdminRequests: any[] = [];
 
 const server = setupServer(
   rest.get(
@@ -70,10 +71,28 @@ const server = setupServer(
       );
     },
   ),
+  rest.put(
+    "https://api.sailhouse.dev/api/v1/topics/:topic/subscriptions/:subscription",
+    async (req, res, ctx) => {
+      const body = await req.json();
+      AdminRequests.push({
+        ...body,
+        topic: req.params.topic,
+        subscription: req.params.subscription,
+      });
+
+      return res(
+        ctx.json({
+          outcome: "created",
+        }),
+      );
+    },
+  ),
 );
 
 beforeEach(() => {
   EventRequests.length = 0;
+  AdminRequests.length = 0;
 });
 
 beforeAll(() => {

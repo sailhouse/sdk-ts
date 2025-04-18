@@ -1,6 +1,6 @@
+import { AdminClient } from "./admin.js";
 import { Wretch, default as w } from "wretch";
 import { default as addon, QueryStringAddon } from "wretch/addons/queryString";
-import WebSocket from "ws";
 
 // Nested keyof utility type
 type NestedKeyOf<T, U = T> = U extends object
@@ -83,6 +83,7 @@ type PublishEventOptions = {
 export class SailhouseClient {
   private api: QueryStringAddon & Wretch<QueryStringAddon>;
   private apiKey: string;
+  public admin: AdminClient;
 
   constructor(apiKey: string, opts?: Partial<Options>) {
     this.api = w()
@@ -95,6 +96,7 @@ export class SailhouseClient {
       .url("https://api.sailhouse.dev");
 
     this.apiKey = apiKey;
+    this.admin = new AdminClient(this.api);
   }
 
   getEvents = async <T extends unknown>(

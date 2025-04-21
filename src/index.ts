@@ -82,6 +82,10 @@ type PublishEventOptions = {
   wait_group_instance_id?: string;
 };
 
+type WaitOptions = {
+  ttl?: TimeWindow;
+};
+
 export class SailhouseClient {
   private api: QueryStringAddon & Wretch<QueryStringAddon>;
   private apiKey: string;
@@ -178,11 +182,13 @@ export class SailhouseClient {
       PublishEventOptions,
       "wait_group_instance_id"
     >)[],
+    options?: WaitOptions,
   ): Promise<void> => {
     const { wait_group_instance_id } = await this.api
       .url(`/waitgroups/instances`)
       .post({
         topic,
+        ttl: options?.ttl,
       })
       .json<{ wait_group_instance_id: string }>();
 

@@ -5,6 +5,19 @@ type RegisterResult = {
   outcome: "created" | "updated" | "none";
 };
 
+type FilterCondition = {
+  path: string;
+  condition: string;
+  value: string;
+};
+
+type ComplexFilter = {
+  filters: FilterCondition[];
+  operator: string;
+};
+
+type Filter = boolean | null | ComplexFilter;
+
 export class AdminClient {
   private api: QueryStringAddon & Wretch<QueryStringAddon>;
 
@@ -17,10 +30,7 @@ export class AdminClient {
     subscription: string,
     endpoint: string,
     options?: {
-      filter?: {
-        path: string;
-        value: string;
-      };
+      filter?: Filter;
     },
   ): Promise<RegisterResult> => {
     const result = await this.api

@@ -95,4 +95,25 @@ describe("Sailhouse Admin Client", () => {
       operator: "and"
     });
   });
+
+  it("should register a push subscription with rate limit and deduplication", async () => {
+    const result = await client.admin.registerPushSubscription(
+      "topic",
+      "subscription",
+      "https://example.com/webhook",
+      {
+        rate_limit: "100/h",
+        deduplication: "5m"
+      }
+    );
+
+    expect(result.outcome).toBe("created");
+    expect(AdminRequests).toHaveLength(1);
+    expect(AdminRequests[0].topic).toBe("topic");
+    expect(AdminRequests[0].subscription).toBe("subscription");
+    expect(AdminRequests[0].type).toBe("push");
+    expect(AdminRequests[0].endpoint).toBe("https://example.com/webhook");
+    expect(AdminRequests[0].rate_limit).toBe("100/h");
+    expect(AdminRequests[0].deduplication).toBe("5m");
+  });
 });

@@ -31,6 +31,8 @@ export class AdminClient {
     endpoint: string,
     options?: {
       filter?: Filter;
+      rate_limit?: string;
+      deduplication?: string;
     },
   ): Promise<RegisterResult> => {
     const result = await this.api
@@ -39,6 +41,8 @@ export class AdminClient {
         type: "push",
         endpoint,
         filter: options?.filter,
+        rate_limit: options?.rate_limit,
+        deduplication: options?.deduplication,
       })
       .json<RegisterResult>();
 

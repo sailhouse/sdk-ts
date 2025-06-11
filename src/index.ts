@@ -21,6 +21,7 @@ interface GetEventOptions<T> {
 export interface IEvent<T> {
   id: string;
   data: T;
+  metadata?: Record<string, any>;
   queryableValue: string;
   timestamp: string;
   ack: () => Promise<void>;
@@ -45,6 +46,7 @@ type PublishEventResponse = {
 class Event<T> implements IEvent<T> {
   id: string;
   data: T;
+  metadata?: Record<string, any>;
   queryableValue: string;
   timestamp: string;
   client: SailhouseClient;
@@ -59,6 +61,7 @@ class Event<T> implements IEvent<T> {
   ) {
     this.id = event.id;
     this.data = event.data;
+    this.metadata = event.metadata;
     this.queryableValue = event.queryableValue;
     this.timestamp = event.timestamp;
     this.client = client;

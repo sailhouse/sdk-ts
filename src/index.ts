@@ -211,4 +211,110 @@ export class SailhouseClient {
       .put({})
       .res();
   };
+
+  subscriber = (opts?: SubscriberOptions): SailhouseSubscriber => {
+    return new SailhouseSubscriber(this, opts);
+  };
+}
+
+type Subscriber = {
+  topic: string;
+  subscription: string;
+  handler: SubscriptionHandler<unknown>;
+};
+
+type SubscriptionHandler<TData> = (args: {
+  event: Event<TData>;
+}) => Promise<void>;
+
+type SubscriberOptions = {
+  perSubscriptionProcessors?: number;
+};
+
+class SailhouseSubscriber {
+  private _client: SailhouseClient;
+  private _subscribers: Subscriber[] = [];
+  private _running: boolean = false;
+  private _activeLoops: Promise<void>[] = [];
+
+  private _perSubscriptionProcessors = 1;
+
+  constructor(client: SailhouseClient, opts?: SubscriberOptions) {
+    this._client = client;
+
+    if (opts) {
+      this._perSubscriptionProcessors = opts.perSubscriptionProcessors ?? 1;
+    }
+  }
+
+  public subscribe = <TData = unknown>(
+    topic: string,
+    subscription: string,
+    handler: SubscriptionHandler<TData>,
+  ) => {
+    this._subscribers.push({
+      topic,
+      subscription,
+      handler: handler as SubscriptionHandler<unknown>,
+    });
+  };
+
+  public start = async () => {
+    if (this._running) {
+      throw new Error("Subscriber is already running");
+    }
+
+    this._running = true;
+
+    this._activeLoops = this._subscribers.flatMap((subscriber) =>
+      new Array(this._perSubscriptionProcessors)
+        .fill(0)
+        .map(() => this._runSubscriberLoop(subscriber)),
+    );
+
+    await Promise.all(this._activeLoops);
+  };
+
+  public stop = () => {
+    this._running = false;
+  };
+
+  private _runSubscriberLoop = async (
+    subscriber: Subscriber,
+  ): Promise<void> => {
+    const { topic, subscription, handler } = subscriber;
+
+    while (this._running) {
+      try {
+        // Pull an event from the subscription
+        const event = await this._client.pull(topic, subscription);
+
+        if (event) {
+          try {
+            // Handle the event
+            await handler({ event });
+
+            await event.ack();
+          } catch (handlerError) {
+            console.error(
+              `Error handling event ${event.id} from ${topic}/${subscription}:`,
+              handlerError,
+            );
+          }
+        } else {
+          await this._delay(1000); // 100ms delay
+        }
+      } catch (pullError) {
+        console.error(
+          `Error pulling from ${topic}/${subscription}:`,
+          pullError,
+        );
+        await this._delay(1000);
+      }
+    }
+  };
+
+  private _delay = (ms: number): Promise<void> => {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  };
 }

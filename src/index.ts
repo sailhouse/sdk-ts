@@ -21,6 +21,7 @@ interface GetEventOptions<T> {
 export interface IEvent<T> {
   id: string;
   data: T;
+  metadata?: Record<string, any>;
   queryableValue: string;
   timestamp: string;
   ack: () => Promise<void>;
@@ -45,6 +46,7 @@ type PublishEventResponse = {
 class Event<T> implements IEvent<T> {
   id: string;
   data: T;
+  metadata?: Record<string, any>;
   queryableValue: string;
   timestamp: string;
   client: SailhouseClient;
@@ -59,6 +61,7 @@ class Event<T> implements IEvent<T> {
   ) {
     this.id = event.id;
     this.data = event.data;
+    this.metadata = event.metadata;
     this.queryableValue = event.queryableValue;
     this.timestamp = event.timestamp;
     this.client = client;
@@ -73,11 +76,17 @@ class Event<T> implements IEvent<T> {
 
 interface Options {
   fetch: typeof fetch;
+  api_url?: string;
 }
 
 type PublishEventOptions = {
   metadata?: Record<string, string>;
   send_at?: Date;
+  wait_group_instance_id?: string;
+};
+
+type WaitOptions = {
+  ttl?: TimeWindow;
 };
 
 export class SailhouseClient {
@@ -93,7 +102,7 @@ export class SailhouseClient {
       .headers({
         "x-source": "sailhouse-js",
       })
-      .url("https://api.sailhouse.dev");
+      .url(opts?.api_url ?? "https://api.sailhouse.dev");
 
     this.apiKey = apiKey;
     this.admin = new AdminClient(this.api);
@@ -133,7 +142,12 @@ export class SailhouseClient {
 
     return await this.api
       .url(`/topics/${topic}/events`)
-      .post({ data: event, metadata: options?.metadata, send_at: sendAt })
+      .post({
+        data: event,
+        metadata: options?.metadata,
+        send_at: sendAt,
+        wait_group_instance_id: options?.wait_group_instance_id,
+      })
       .json<PublishEventResponse>();
   };
 
@@ -163,5 +177,38 @@ export class SailhouseClient {
 
     const event = (await res.json()) as IEvent<T>;
     return new Event(event, topic, subscription, this);
+  };
+
+  wait = async (
+    topic: string,
+    events: ({ topic: string; body: unknown } & Omit<
+      PublishEventOptions,
+      "wait_group_instance_id"
+    >)[],
+    options?: WaitOptions,
+  ): Promise<void> => {
+    const { wait_group_instance_id } = await this.api
+      .url(`/waitgroups/instances`)
+      .post({
+        topic,
+        ttl: options?.ttl,
+      })
+      .json<{ wait_group_instance_id: string }>();
+
+    await Promise.all(
+      events.map((event) =>
+        this.publish(event.topic, event.body, {
+          ...event,
+          wait_group_instance_id,
+        }),
+      ),
+    );
+
+    // This is a close to no-op, but it will mark the wait group as in progress
+    // so it can be processed correctly
+    await this.api
+      .url(`/waitgroups/instances/${wait_group_instance_id}/events`)
+      .put({})
+      .res();
   };
 }

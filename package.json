@@ -9,6 +9,7 @@
   ],
   "scripts": {
     "test": "vitest",
+    "test:ci": "vitest run",
     "build": "tsc --project tsconfig.build.json"
   },
   "keywords": [],

@@ -1,6 +1,22 @@
 import { AdminClient } from "./admin.js";
+import {
+  PushSubscriptionVerifier,
+  VerificationOptions,
+} from "./pushSubscriptions.js";
 import { Wretch, default as w } from "wretch";
 import { default as addon, QueryStringAddon } from "wretch/addons/queryString";
+
+// Export push subscription types and functions
+export {
+  PushSubscriptionVerifier,
+  PushSubscriptionVerificationError,
+  verifyPushSubscriptionSignature,
+  verifyPushSubscriptionSignatureSafe,
+  type SignatureComponents,
+  type PushSubscriptionHeaders,
+  type PushSubscriptionPayload,
+  type VerificationOptions,
+} from "./pushSubscriptions.js";
 
 // Nested keyof utility type
 type NestedKeyOf<T, U = T> = U extends object
@@ -210,5 +226,35 @@ export class SailhouseClient {
       .url(`/waitgroups/instances/${wait_group_instance_id}/events`)
       .put({})
       .res();
+  };
+
+  /**
+   * Verify a push subscription signature
+   * @param signature The Sailhouse-Signature header value
+   * @param body The raw request body as string
+   * @param secret The push subscription secret
+   * @param options Verification options
+   * @returns true if signature is valid
+   * @throws PushSubscriptionVerificationError if verification fails
+   */
+  verifyPushSubscription = (
+    signature: string,
+    body: string,
+    secret: string,
+    options?: VerificationOptions,
+  ): boolean => {
+    const verifier = new PushSubscriptionVerifier(secret);
+    return verifier.verifySignature(signature, body, options);
+  };
+
+  /**
+   * Create a push subscription verifier instance
+   * @param secret The push subscription secret
+   * @returns PushSubscriptionVerifier instance
+   */
+  createPushSubscriptionVerifier = (
+    secret: string,
+  ): PushSubscriptionVerifier => {
+    return new PushSubscriptionVerifier(secret);
   };
 }

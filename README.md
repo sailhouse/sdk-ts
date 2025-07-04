@@ -8,5 +8,5 @@ The [Sailhouse](https://sailhouse.dev) Client provides an idomatic abstraction o
 const token = "sh_" // ......
 const client = new SailhouseClient(token);
 
-await client.sendEvent("test-event", { message: "Hello World!" });
+await client.publish("test-event", { message: "Hello World!" });
 ```

@@ -2,7 +2,7 @@ import { AdminClient } from "./admin.js";
 import {
   PushSubscriptionVerifier,
   VerificationOptions,
-} from "./pushSubscriptions.js";
+} from "./push-subscriptions.js";
 import { Wretch, default as w } from "wretch";
 import { default as addon, QueryStringAddon } from "wretch/addons/queryString";
 
@@ -16,7 +16,7 @@ export {
   type PushSubscriptionHeaders,
   type PushSubscriptionPayload,
   type VerificationOptions,
-} from "./pushSubscriptions.js";
+} from "./push-subscriptions.js";
 
 // Nested keyof utility type
 type NestedKeyOf<T, U = T> = U extends object
